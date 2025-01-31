@@ -7,7 +7,8 @@
 #SBATCH --ntasks-per-node=24
 #SBATCH --time=00:05:30
 
-# Maximum time allowed for the script (in seconds)
+mkdir -p autograderout
+
 MAX_EXECUTION_TIME=300
 
 # Run the tests within the time limit
@@ -16,170 +17,151 @@ timeout $MAX_EXECUTION_TIME bash -c '
 lscpu
 echo "-------------------------------------"
 
-# Run the tests
 module load openmpi
 
 make clean
-make
+make many2many
+make allreduce
 
-# Correctness tests
+echo " "
+echo "=================== CHECKING TEST FILE ==================="
+echo " "
+
+if [ ! -f "autograderdata/inputard_15.txt" ]; then
+    echo "No AllReduce 15 Input"
+    exit 1
+fi
+
+if [ ! -f "autograderdata/inputm2_15.txt" ]; then
+    echo "No M2M 15 Input"
+    exit 1
+fi
+
+if [ ! -f "autograderdata/inputard_24.txt" ]; then
+    echo "No AllReduce 24 Input"
+    exit 1
+fi
+
+if [ ! -f "autograderdata/inputm2_24.txt" ]; then
+    echo "No M2M 24 Input"
+    exit 1
+fi
+
+if [ ! -f "autograderdata/outputard_15.txt" ]; then
+    echo "No AllReduce 15 Output"
+    exit 1
+fi
+
+if [ ! -f "autograderdata/outputm2_15.txt" ]; then
+    echo "No M2M 15 Output"
+    exit 1
+fi
+
+if [ ! -f "autograderdata/outputard_24.txt" ]; then
+    echo "No AllReduce 24 Output"
+    exit 1
+fi
+
+if [ ! -f "autograderdata/outputm2_24.txt" ]; then
+    echo "No M2M 24 Output"
+    exit 1
+fi
+
+
 echo " "
 echo "=================== CORRECTNESS TESTS ==================="
 echo " "
-echo "##Scatter"
-output_16=$(srun -n 16 ./primitives -s 100000000 5)
-output_24=$(srun -n 24 ./primitives -s 150000000 5)
-echo "$output_16"
-echo "----------------------------------"
-echo "$output_24"
-if [[ $output_16 != *"Implementation is correct!"* ]] || [[ $output_24 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
+
+echo "##AllReduce 15"
+output=$(srun -n 15 ./ard autograderdata/inputard_15.txt autograderout/myoutputard_15.txt)
+echo "$output"
+if diff autograderdata/outputard_15.txt autograderout/myoutputard_15.txt > /dev/null; then
+    echo "AllReduce P=15 Correctness passed!"
+else
+    echo "AllReduce P=15 Failed"
 fi
+echo " "
+
+echo "##AllReduce 24"
+output=$(srun -n 24 ./ard autograderdata/inputard_24.txt autograderout/myoutputard_24.txt)
+echo "$output"
+
+if diff autograderdata/outputard_24.txt autograderout/myoutputard_24.txt > /dev/null; then
+    echo "AllReduce P=24 Correctness passed!"
+else
+    echo "AllReduce P=24 Failed"
+fi
+echo " "
+
+
+echo " "
 echo "=================================="
 echo " "
-echo "##AllGather"
-output_16=$(srun -n 16 ./primitives -g 100000000 0)
-output_24=$(srun -n 24 ./primitives -g 150000000 0)
-echo "$output_16"
-echo "----------------------------------"
-echo "$output_24"
-if [[ $output_16 != *"Implementation is correct!"* ]] || [[ $output_24 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
-fi
-echo "=================================="
+
+
+echo "##Many2Many 15"
+output=$(srun -n 15 ./m2m autograderdata/inputm2_15.txt autograderdata/outputm2_15.txt)
+echo "$output"
 echo " "
-echo "##AllReduce"
-output_16=$(srun -n 16 ./primitives -r 100000000 0)
-output_24=$(srun -n 24 ./primitives -r 150000000 0)
-echo "$output_16"
-echo "----------------------------------"
-echo "$output_24"
-if [[ $output_16 != *"Implementation is correct!"* ]] || [[ $output_24 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
-fi
-echo "=================================="
-echo " "
-echo "##AlltoAll_Arbitrary"
-output_16=$(srun -n 16 ./primitives -a 100000000 0)
-output_24=$(srun -n 24 ./primitives -a 150000000 0)
-echo "$output_16"
-echo "----------------------------------"
-echo "$output_24"
-if [[ $output_16 != *"Implementation is correct!"* ]] || [[ $output_24 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
-fi
-echo "=================================="
-echo " "
-echo "##AlltoAll_Hypercube"
-output_16=$(srun -n 16 ./primitives -h 100000000 0)
-echo "$output_16"
-if [[ $output_16 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
-fi
-echo "=================================="
-echo " "
+
+echo "##Many2Many 24"
+output=$(srun -n 24 ./m2m autograderdata/inputm2_24.txt autograderdata/outputm2_24.txt)
+echo "$output"
 
 
 echo "==================== RUNTIME TESTS ====================="
 echo " "
-
-multiplier=25
-echo "##Scatter"
-output_16=$(srun -n 16 ./primitives -s 100000000 0)
-echo "$output_16"
-if [[ $output_16 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
-else
-    custom_16=$(echo "$output_16" | grep "Custom_" | awk "{print \$3}")
-    mpi_16=$(echo "$output_16" | grep "MPI_" | awk "{print \$3}")
-
-    if (( $(echo "$custom_16 < $multiplier * $mpi_16" | bc -l) )); then
-        echo "Runtime test passed!"
-    else
-    echo "Runtime test failed"
-    fi
-fi
-
-echo "=================================="
-echo " "
-echo "##AllGather"
-multiplier=3
-output_16=$(srun -n 16 ./primitives -g 100000000 0)
-echo "$output_16"
-if [[ $output_16 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
-else
-	custom_16=$(echo "$output_16" | grep "Custom_" | awk "{print \$3}")
-	mpi_16=$(echo "$output_16" | grep "MPI_" | awk "{print \$3}")
-
-	if (( $(echo "$custom_16 < $multiplier * $mpi_16" | bc -l) )); then
-    		echo "Runtime test passed!"
-	else
-    	echo "Runtime test failed"
-	fi
-fi
-
-echo "=================================="
-echo " "
 echo "##AllReduce"
-multiplier=10
-output_16=$(srun -n 16 ./primitives -r 100000000 0)
-echo "$output_16"
-if [[ $output_16 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
-else
-	custom_16=$(echo "$output_16" | grep "Custom_" | awk "{print \$3}")
-	mpi_16=$(echo "$output_16" | grep "MPI_" | awk "{print \$3}")
+output_24=$(srun -n 24 ./ard autograderdata/inputard_24.txt)
 
-	if (( $(echo "$custom_16 < $multiplier * $mpi_16" | bc -l) )); then
-    		echo "Runtime test passed!"
-	else
-    		echo "Runtime test failed"
-	fi
+custom_time=$(echo "$output_24" | sed -n "s/.*Time taken by custom function: \([0-9.]*\).*/\1/p")
+echo "Custom function time: $custom_time"
+
+mpi_time=40
+multiplier=1
+if (( $(echo "$custom_time < $multiplier * $mpi_time" | bc -l) )); then
+        echo "Runtime test passed!"
+else
+        echo "Runtime test failed"
 fi
 
+mpi_time=30
+multiplier=1
+if (( $(echo "$custom_time < $multiplier * $mpi_time" | bc -l) )); then
+        echo "Runtime test passed!"
+else
+        echo "Runtime test failed"
+fi
+
+
+echo " "
 echo "=================================="
 echo " "
-echo "##AlltoAll_Arbitrary"
-multiplier=2
-output_16=$(srun -n 16 ./primitives -a 100000000 0)
-echo "$output_16"
-if [[ $output_16 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
-else
-	custom_16=$(echo "$output_16" | grep "Custom_" | awk "{print \$3}")
-	mpi_16=$(echo "$output_16" | grep "MPI_" | awk "{print \$3}")
 
-	if (( $(echo "$custom_16 < $multiplier * $mpi_16" | bc -l) )); then
-    		echo "Runtime test passed!"
-	else
-    		echo "Runtime test failed"
-	fi
+echo "##Many2Many"
+
+output_24=$(srun -n 24 ./m2m autograderdata/inputm2_24.txt)
+
+custom_time=$(echo "$output_24" | sed -n "s/.*Time taken by custom function: \([0-9.]*\).*/\1/p")
+echo "Custom function time: $custom_time"
+
+mpi_time=50
+multiplier=1
+if (( $(echo "$custom_time < $multiplier * $mpi_time" | bc -l) )); then
+        echo "Runtime test passed!"
+else
+        echo "Runtime test failed"
 fi
 
-echo "=================================="
-echo " "
-echo "##AlltoAll_Hypercube"
-multiplier=10
-output_16=$(srun -n 16 ./primitives -h 100000000 0)
-echo "$output_16"
-if [[ $output_16 != *"Implementation is correct!"* ]]; then
-    echo "ERROR"
+mpi_time=40
+multiplier=1
+if (( $(echo "$custom_time < $multiplier * $mpi_time" | bc -l) )); then
+        echo "Runtime test passed!"
 else
-	custom_16=$(echo "$output_16" | grep "Custom_" | awk "{print \$3}")
-	mpi_16=$(echo "$output_16" | grep "MPI_" | awk "{print \$3}")
-
-	if (( $(echo "$custom_16 < $multiplier * $mpi_16" | bc -l) )); then
-    		echo "Runtime test passed!"
-	else
-    		echo "Runtime test failed"
-	fi
+        echo "Runtime test failed"
 fi
-
-echo " "
-
 '
-
+rm -rf autograderout/
 if [[ $? -eq 124 ]]; then
     echo "Error: Script execution exceeded $MAX_EXECUTION_TIME seconds."
     exit 1

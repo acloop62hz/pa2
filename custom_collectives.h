@@ -3,23 +3,13 @@
 
 #include <mpi.h>
 
-void Custom_Scatter(int* sendbuf, int sendcount, MPI_Datatype sendtype,
-                    int* recvbuf, int recvcount, MPI_Datatype recvtype,
-                    int root, MPI_Comm comm);
+void custom_allreduce_sum(int *local_array, int *global_sum, int num_elem, int rank, int size);
 
-void Custom_Allgather(int* sendbuf, int sendcount, MPI_Datatype sendtype,
-                      int* recvbuf, int recvcount, MPI_Datatype recvtype,
-                      MPI_Comm comm);
+/* Note: 
+ * 1. recv_data_ptr is a pointer to the recv_data array (which itself is a pointer to element recv_data[0]).
+ * 2. return type of _many2many function is an int which is the length of the recv_data array after many2many function is performend.
+ * */
 
-void Custom_Allreduce(int* sendbuf, int* recvbuf, int count,
-                      MPI_Datatype datatype, MPI_Op op, MPI_Comm comm);
-
-void Custom_Alltoall_Hypercube(int* sendbuf, int sendcount, MPI_Datatype sendtype,
-                               int* recvbuf, int recvcount, MPI_Datatype recvtype,
-                               MPI_Comm comm);
-
-void Custom_Alltoall_Arbitrary(int* sendbuf, int sendcount, MPI_Datatype sendtype,
-                               int* recvbuf, int recvcount, MPI_Datatype recvtype,
-                               MPI_Comm comm);
+int custom_many2many(int *send_data, int *sendcounts, int** recv_data_ptr, int rank, int size);
 
 #endif
