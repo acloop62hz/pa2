@@ -6,7 +6,7 @@ many2many:
 	$(MPICC) $(CFLAGS) -o m2m manytomany_main.cpp custom_collectives.cpp
 
 many2many_test1: many2many
-	$(MPIRUN) -np 15 ./m2m inputm1.txt outputm1.txt
+	$(MPIRUN) -np 15 ./m2m ./small_example/m2m_smallinput.txt  outputm1.txt
 
 many2many_test2: many2many
 	$(MPIRUN) -np 24 ./m2m inputm2.txt outputm2.txt
