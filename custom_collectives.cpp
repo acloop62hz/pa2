@@ -49,7 +49,6 @@ int custom_many2many(int *send_data, int *sendcounts, int** recv_data_ptr, int r
   // Gather all sendcounts from each process
   custom_allgather(sendcounts_all, sendcounts, rank, size);
 
-  // Determine the maximum send count across all processes and destinations
   int global_max = 0;
   for (int i = 0; i < size * size; ++i) {
       if (sendcounts_all[i] > global_max) {
@@ -68,7 +67,6 @@ int custom_many2many(int *send_data, int *sendcounts, int** recv_data_ptr, int r
       send_displacements[i] = send_displacements[i-1] + sendcounts[i-1];
   }
 
-  // Prepare the uniform send buffer
   int send_buffer_size = size * global_max;
   int *send_buffer = NULL;
   if (send_buffer_size > 0) {
@@ -105,7 +103,6 @@ int custom_many2many(int *send_data, int *sendcounts, int** recv_data_ptr, int r
   // Perform all-to-all communication
   custom_alltoall(send_buffer, receive_buffer, rank, global_max, size);
 
-  // Calculate total received elements and prepare recv_data
   int total_recv = 0;
   for (int s = 0; s < size; ++s) {
       total_recv += sendcounts_all[s * size + rank]; // sendcounts_all[s][rank]
@@ -120,7 +117,6 @@ int custom_many2many(int *send_data, int *sendcounts, int** recv_data_ptr, int r
       return -1;
   }
 
-  // Compute receive displacements and copy data
   if (total_recv > 0 && receive_buffer != NULL) {
       int *recv_displacements = (int *)malloc(size * sizeof(int));
       if (recv_displacements == NULL) {
@@ -146,7 +142,6 @@ int custom_many2many(int *send_data, int *sendcounts, int** recv_data_ptr, int r
       free(recv_displacements);
   }
 
-  // Cleanup
   free(sendcounts_all);
   free(send_displacements);
   free(send_buffer);
