@@ -1,3 +1,5 @@
 autograderdata
-./ard
-./m2m
+ard
+m2m
+*.out
+*.err
