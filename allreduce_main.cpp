@@ -64,7 +64,8 @@ int main(int argc, char *argv[]) {
 
   /* call the custom function for the same */
   double start2 = MPI_Wtime();
-  custom_allreduce_sum(local_array, global_sum_custom, num_elem, rank, size);
+  // custom_allreduce_sum(local_array, global_sum_custom, num_elem, rank, size);
+  MPI_Allreduce(local_array,global_sum_custom,num_elem,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
   double end2 = MPI_Wtime();
   double local_custom_time = end2 - start2, global_custom_time;
   MPI_Allreduce(&local_custom_time, &global_custom_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
