@@ -5,6 +5,17 @@
 
 #include <cassert>
 #include <fstream>
+#include <cstring>
+#include <cassert>
+
+bool areIntBuffersEqual(const int* buf1, const int* buf2, size_t size) {
+  for (size_t i = 0; i < size; ++i) {
+      if (buf1[i] != buf2[i]) {
+          return false;
+      }
+  }
+  return true;
+}
 
 int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
@@ -62,13 +73,31 @@ int main(int argc, char *argv[]) {
     MPI_Recv(local_array, LEN, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
   }
 
+  int* MPIglobal_sum_custom = new int[LEN];
+  int* MPIlocal_array = new int[LEN];
+  memcpy(MPIlocal_array,local_array,num_elem*sizeof(int));
+
   /* call the custom function for the same */
   double start2 = MPI_Wtime();
   custom_allreduce_sum(local_array, global_sum_custom, num_elem, rank, size);
+  MPI_Allreduce(MPIlocal_array,MPIglobal_sum_custom,num_elem,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
   double end2 = MPI_Wtime();
   double local_custom_time = end2 - start2, global_custom_time;
   MPI_Allreduce(&local_custom_time, &global_custom_time, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-  if (rank == 0) printf("Time taken by custom function: %f\n", global_custom_time);
+  if (rank == 0){
+    // printf("Sum: ");
+    // for (int i=0; i< num_elem; i++){
+    //   printf("%i, ",global_sum_custom[i]);
+    // }
+    // printf("\n");
+    // printf("MPI Sum: ");
+    // for (int i=0; i< num_elem; i++){
+    //   printf("%i, ",MPIglobal_sum_custom[i]);
+    // }
+    // printf("\n");
+    std::cout << areIntBuffersEqual(global_sum_custom, MPIglobal_sum_custom, sizeof(global_sum_custom))<< std::endl;
+    printf("Time taken by custom function: %f\n", global_custom_time);
+  }
 
   if (argc == 2) {
     MPI_Finalize();
